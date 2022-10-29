@@ -1,8 +1,8 @@
 {
   "name": "easy-addins-utils",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Utility functions for easy addins collection",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "jest"
   },
