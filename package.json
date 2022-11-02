@@ -1,9 +1,10 @@
 {
   "name": "easy-addins-utils",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Utility functions for easy addins collection",
   "main": "dist/index.js",
   "scripts": {
+    "build": "tsc",
     "test": "jest"
   },
   "author": "Arman Hilmioglu",
