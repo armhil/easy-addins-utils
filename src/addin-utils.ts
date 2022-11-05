@@ -63,8 +63,8 @@ export const AddinUtils = {
       window.Office.context.document.settings.saveAsync();
     }
     else if (EnvironmentUtils.IsLocalhost()){
-            if (!this.localDictionary) 
-                this.localDictionary={};
+      if (!this.localDictionary) 
+        this.localDictionary={};
       this.localDictionary[key] = value;
     }
   },
