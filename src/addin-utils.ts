@@ -25,7 +25,7 @@ export const AddinUtils = {
    * @param {string} image Base64 image.
    * @param {function} callback Callback function
    */
-  InsertImage: function(image: string, callback: Function) {
+  InsertImage: function(image: string, callback?: Function) {
     if (EnvironmentUtils.IsOffice()) {
       window.Office.context.document.setSelectedDataAsync(
         image,
@@ -35,20 +35,37 @@ export const AddinUtils = {
         }
       );
     }
+    else if (EnvironmentUtils.IsGsuite()) {
+      window.google.script.run
+        .withSuccessHandler(callback)
+        .withFailureHandler((err: any) => console.error(err))
+        .insertImageFromBase64String(image);
+    }
   },
 
   /**
    * Gets the selected text
    * @param {function} callback - Callback function
    */
-  GetText: function(callback: Function) {
+  GetText: function(callback: (text: string) => void) {
     if (EnvironmentUtils.IsOffice()) {
       window.Office.context.document.getSelectedDataAsync(
           window.Office.CoercionType.Text,
           function (asyncResult: any) {
-              callback(asyncResult);
+            if (asyncResult.status == window.Office.AsyncResultStatus.Failed) {
+              console.error(asyncResult.error.message);
+            }
+            else {
+              callback(asyncResult.value);
+            }
           }
       );
+    }
+    else if (EnvironmentUtils.IsGsuite()) {
+      const result = window.google.script.run
+        .withSuccessHandler(() => callback(result))
+        .withFailureHandler((err: any) => console.error(err))
+        .getSelectedText();
     }
   },
 

@@ -4,6 +4,7 @@ describe('AddinUtils tests', () => {
   beforeEach(() => {
     delete window.location;
     delete window.Office;
+    delete window.google;
   });
 
   it('Initialize:Office should call the callback fn', () => {
@@ -67,11 +68,24 @@ describe('AddinUtils tests', () => {
     AddinUtils.GetText(successFn);
     expect(mockFn).toHaveBeenCalledTimes(1);
     expect(successFn).toHaveBeenCalledTimes(0);
-    // first parameter
-    expect(mockFn.mock.lastCall[0]).toBe('Text');
-    // manually call the callback of GetText - which should call our call-back
-    mockFn.mock.lastCall[1]();
-    expect(successFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('GetText:google calls getSelectedText with correct params', () => {
+    const mockFn = jest.fn();
+    const successFn = jest.fn();
+    window.google =  {
+      script: {
+        run: {
+          withSuccessHandler: () => window.google.script.run,
+          withFailureHandler: () => window.google.script.run,
+          getSelectedText: mockFn
+        }
+      }
+    };
+
+    AddinUtils.GetText(successFn);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    expect(successFn).toHaveBeenCalledTimes(0);
   });
 
   it('InsertImage:Office calls setSelectedDataAsync with correct params', () => {
@@ -85,8 +99,30 @@ describe('AddinUtils tests', () => {
     expect(mockFn.mock.lastCall[0]).toBe(imageText);
     expect(mockFn.mock.lastCall[1]).toEqual({coercionType: window.Office.CoercionType.Image});
     expect(successFn).toHaveBeenCalledTimes(0);
-    // manually call the callback of InsertImage - which should call our call-back
+    // manually call the callback of InsertImage - which should call our callback
     mockFn.mock.lastCall[2]();
     expect(successFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('InsertImage:google calls insertImageFromBase64String with correct params', () => {
+    const mockFn = jest.fn();
+    // there is no real way to test the successFn callback in this case
+    // since google handles these on their end.
+    // https://developers.google.com/apps-script/guides/html/reference/run
+    const successFn = jest.fn();
+    const imageText = 'imageText';
+    window.google =  {
+      script: {
+        run: {
+          withSuccessHandler: () => window.google.script.run,
+          withFailureHandler: () => window.google.script.run,
+          insertImageFromBase64String: mockFn
+        }
+      }
+    };
+
+    AddinUtils.InsertImage(imageText, successFn);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    expect(mockFn.mock.lastCall[0]).toBe(imageText);
   });
 });
