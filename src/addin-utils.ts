@@ -6,7 +6,7 @@ export const AddinUtils = {
    * Required for Office addins, tbd for G-Suite.
  * @param {function} successCallback - Success callback
  */
-  Initialize: function(successCallback: Function) {
+  Initialize: function(successCallback?: Function) {
     // We're in localhost 
     if (EnvironmentUtils.IsLocalhost()) {
       console.log('AddinUtils.Initialize -> We are in localhost');
@@ -14,7 +14,9 @@ export const AddinUtils = {
     // Microsoft Office
     else if (EnvironmentUtils.IsOffice()) {
       window.Office.initialize = function() {
-        successCallback();
+        if (successCallback) {
+          successCallback();
+        }
       };
     }
   },
