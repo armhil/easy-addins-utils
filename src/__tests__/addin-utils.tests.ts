@@ -1,4 +1,5 @@
 import { AddinUtils } from './../addin-utils';
+import '../types';
 
 describe('AddinUtils tests', () => {
   beforeEach(() => {
@@ -7,7 +8,7 @@ describe('AddinUtils tests', () => {
     delete window.google;
   });
 
-  it('Initialize:Office should call the callback fn', () => {
+  it('Initialize:Office should call the callback fn if there is one', () => {
     // This test is slighly tricky, because in the actual environment,
     // we rely on Office.js to invoke the callback fn.
     const successMockFn = jest.fn();
@@ -21,6 +22,13 @@ describe('AddinUtils tests', () => {
     window.Office.initialize();
     // now our callback should have been called
     expect(successMockFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('Initialize:Office should work without callback', () => {
+    window.Office = { initialize : undefined, context : { document: "SomeValue"}};
+    window.location = { hostname: 'https://testing:1234' } as Location;
+
+    AddinUtils.Initialize();
   });
 
   it('GetSetting:localhost returns undefined for no settings', () => {
