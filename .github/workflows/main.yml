@@ -25,6 +25,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: armhil/easy-addins-utils
+      - run: npx eslint
       - run: tsc
       # Publish NPM package
       - uses: JS-DevTools/npm-publish@v1
