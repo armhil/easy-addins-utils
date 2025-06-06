@@ -10,7 +10,9 @@ describe('LoggingUtils tests', () => {
     const mockTrackFn = jest.fn();
     const loggingKey = 'testKey';
     window.appInsights = { trackEvent: mockTrackFn };
-    (window as any).location = { hostname: 'https://localhost:1234' } as Location;
+    (window as any).location = {
+      hostname: 'https://localhost:1234',
+    } as Location;
 
     LoggingUtils.Trace(loggingKey);
     expect(mockTrackFn).toHaveBeenCalledTimes(0);
