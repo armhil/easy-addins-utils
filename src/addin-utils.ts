@@ -10,6 +10,7 @@ export const AddinUtils = {
     // We're in localhost
     if (EnvironmentUtils.IsLocalhost()) {
       console.log('AddinUtils.Initialize -> We are in localhost');
+      successCallback?.();
     }
     // Microsoft Office
     else if (EnvironmentUtils.IsOffice()) {
