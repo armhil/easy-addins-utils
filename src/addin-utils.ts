@@ -6,20 +6,24 @@ export const AddinUtils = {
    * Required for Office addins, tbd for G-Suite.
    * @param {function} successCallback - Success callback
    */
-  Initialize: function (successCallback?: (info?: any) => void): void {
-    // We're in localhost
-    if (EnvironmentUtils.IsLocalhost()) {
-      console.log('AddinUtils.Initialize -> We are in localhost');
-      successCallback?.();
-    }
-    // Microsoft Office
-    else if (EnvironmentUtils.IsOffice()) {
-      window.Office.onReady((info: any) => successCallback?.(info));
-    }
-    // G-Suite
-    else {
-      successCallback?.();
-    }
+  Initialize: function (): Promise<any> {
+    return new Promise((resolve, reject) => {
+      // We're in localhost
+      if (EnvironmentUtils.IsLocalhost()) {
+        console.log('AddinUtils.Initialize -> We are in localhost');
+        return resolve('AddinUtilsInitialize - No action in localhost');
+      }
+      // Microsoft Office
+      else if (EnvironmentUtils.IsOffice()) {
+        window.Office.onReady((info: any) => {
+          return resolve(info);
+        });
+      }
+      // G-Suite
+      else {
+        return reject('Not implemented yet');
+      }
+    });
   },
   /**
    * Inserts text
@@ -28,21 +32,30 @@ export const AddinUtils = {
    */
   InsertText: function (
     text: string,
-    insertionType: 'Text' | 'Html',
-    callback?: () => void
-  ): void {
-    if (EnvironmentUtils.IsLocalhost()) {
-      // Do nothing
-      console.log('AddinUtils.InsertText invoked with ', text);
-    } else if (EnvironmentUtils.IsGsuite()) {
-      window.google.script.run.insertPlainText(text);
-    } else {
-      window.Office.context.document.setSelectedDataAsync(
-        text,
-        { coercionType: window.Office.CoercionType[insertionType] },
-        callback
-      );
-    }
+    insertionType: 'Text' | 'Html' = 'Text',
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (EnvironmentUtils.IsLocalhost()) {
+        // Do nothing
+        return resolve(`No action in localhost, invoked with text: ${text}`);
+      } else if (EnvironmentUtils.IsGsuite()) {
+        window.google.script.run
+          .withSuccessHandler((result: any) => resolve(result))
+          .withFailureHandler((err: any) => reject(err))
+          .insertPlainText(text);
+      } else {
+        window.Office.context.document.setSelectedDataAsync(
+          text,
+          { coercionType: window.Office.CoercionType[insertionType] },
+          (successParams: Office.AsyncResult<void>) => {
+            if (successParams.status === window.Office.AsyncResultStatus.Failed) {
+              return reject(successParams.error.message);
+            }
+            return resolve(successParams);
+          }
+        );
+      }
+    });
   },
   /**
    * Inserts image - we expect the underlying APIs for PPT and Word to be
@@ -51,46 +64,55 @@ export const AddinUtils = {
    * @param {function} callback Callback function
    */
   InsertImage: function (
-    image: string,
-    callback?: (...params: object[]) => void
-  ): void {
-    if (EnvironmentUtils.IsOffice()) {
-      window.Office.context.document.setSelectedDataAsync(
-        image,
-        { coercionType: window.Office.CoercionType.Image },
-        function (asyncResult: object) {
-          callback(asyncResult);
-        }
-      );
-    } else if (EnvironmentUtils.IsGsuite()) {
-      window.google.script.run
-        .withSuccessHandler((result: any) => callback(result))
-        .withFailureHandler((err: any) => console.error(err))
-        .insertImageFromBase64String(image);
-    }
+    image: string
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (EnvironmentUtils.IsOffice()) {
+        window.Office.context.document.setSelectedDataAsync(
+          image,
+          { coercionType: window.Office.CoercionType.Image },
+          (successParams: Office.AsyncResult<void>) => {
+            if (successParams.status === window.Office.AsyncResultStatus.Failed) {
+              return reject(successParams.error.message);
+            }
+            return resolve(successParams);
+          }
+        );
+      } else if (EnvironmentUtils.IsGsuite()) {
+        window.google.script.run
+          .withSuccessHandler((result: any) => resolve(result))
+          .withFailureHandler((err: any) => reject(err))
+          .insertImageFromBase64String(image);
+      }
+    });
   },
 
   /**
    * Gets the selected text
    * @param {function} callback - Callback function
    */
-  GetText: function (callback: (text: string) => void) {
+  GetText: function (): Promise<string> {
     if (EnvironmentUtils.IsOffice()) {
-      window.Office.context.document.getSelectedDataAsync(
-        window.Office.CoercionType.Text,
-        function (asyncResult: any) {
-          if (asyncResult.status == window.Office.AsyncResultStatus.Failed) {
-            console.error(asyncResult.error.message);
-          } else {
-            callback(asyncResult.value);
+      return new Promise((resolve, reject) => {
+        window.Office.context.document.getSelectedDataAsync(
+          window.Office.CoercionType.Text,
+          function (asyncResult: any) {
+            if (asyncResult.status == window.Office.AsyncResultStatus.Failed) {
+              return reject(asyncResult.error.message);
+            } else {
+              return resolve(asyncResult.value);
+            }
           }
-        }
-      );
+        );
+      });
     } else if (EnvironmentUtils.IsGsuite()) {
-      window.google.script.run
-        .withSuccessHandler((result: any) => callback(result))
-        .withFailureHandler((err: any) => console.error(err))
-        .getSelectedText();
+      return new Promise((resolve, reject) => {
+
+        window.google.script.run
+          .withSuccessHandler((result: any) => resolve(result))
+          .withFailureHandler((err: any) => reject(err))
+          .getSelectedText();
+      });
     }
   },
 

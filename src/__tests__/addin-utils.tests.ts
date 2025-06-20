@@ -1,197 +1,279 @@
 import { AddinUtils } from './../addin-utils';
-import '../types';
+import { EnvironmentUtils } from './../environment-utils'
+import type { GoogleScriptRun } from './../types';
+// Mock EnvironmentUtils
+jest.mock('./../environment-utils', () => ({
+  EnvironmentUtils: {
+    IsLocalhost: jest.fn(),
+    IsOffice: jest.fn(),
+    IsGsuite: jest.fn(),
+  },
+}));
 
-describe('AddinUtils tests', () => {
-  beforeEach(() => {
-    delete window.location;
-    delete window.Office;
-    delete window.google;
+// Define Office/Google globals
+declare global {
+  interface Window {
+    Office: any;
+    google: GoogleScriptRun;
+  }
+}
+
+// Reset mocks before each test
+beforeEach(() => {
+  jest.resetAllMocks();
+  window.Office = undefined;
+  window.google = undefined;
+});
+
+describe('AddinUtils.Initialize', () => {
+  it('resolves immediately on localhost', async () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(true);
+    await expect(AddinUtils.Initialize()).resolves.toContain('No action in localhost');
   });
 
-  it('Initialize:Office should call the callback fn if there is one', () => {
-    // This test is slighly tricky, because in the actual environment,
-    // we rely on Office.js to invoke the callback fn.
-    const successMockFn = jest.fn();
+  it('resolves on Office ready', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+    const readyMock = jest.fn((cb) => cb('office-ready'));
+    window.Office = { onReady: readyMock };
 
-    (window as any).Office = {
-      onReady: () => successMockFn(),
-      context: { document: 'SomeValue' },
-    };
-    (window as any).location = { hostname: 'https://testing:1234' } as Location;
-
-    AddinUtils.Initialize(successMockFn);
-    // now our callback should have been called
-    expect(successMockFn).toHaveBeenCalledTimes(1);
+    const result = await AddinUtils.Initialize();
+    expect(result).toBe('office-ready');
   });
 
-  it('Initialize:Office should work without callback', () => {
-    (window as any).Office = {
-      onReady: () => {},
-      context: { document: 'SomeValue' },
-    };
-    (window as any).location = { hostname: 'https://testing:1234' } as Location;
+  it('rejects on unsupported platform', async () => {
+    await expect(AddinUtils.Initialize()).rejects.toBe('Not implemented yet');
+  });
+});
 
-    AddinUtils.Initialize();
+describe('AddinUtils.InsertText', () => {
+  it('should resolve immediately on localhost with a message', async () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(true);
+    const result = await AddinUtils.InsertText('test');
+    expect(result).toContain('No action in localhost');
   });
 
-  it('GetSetting:localhost returns undefined for no settings', () => {
-    (window as any).location = {
-      hostname: 'https://localhost:1234',
-    } as Location;
-    expect(AddinUtils.GetSetting('randomSetting')).toBe(undefined);
-  });
+  it('should invoke Google Apps Script when in G-Suite', async () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
 
-  it('GetSetting:localhost returns expected value for setting', () => {
-    (window as any).location = {
-      hostname: 'https://localhost:1234',
-    } as Location;
-    const settingName = 'randomSetting';
-    const settingValue = 'settingValue';
-    AddinUtils.SaveSetting(settingName, settingValue);
-
-    expect(AddinUtils.GetSetting(settingName)).toBe(settingValue);
-  });
-
-  it('GetSetting:Office calls settings.get', () => {
-    const mockFn = jest.fn();
-    const settingName = 'randomSetting';
-    (window as any).Office = {
-      context: { document: { settings: { get: mockFn } } },
-    };
-
-    AddinUtils.GetSetting(settingName);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(mockFn).toHaveBeenCalledWith(settingName);
-  });
-
-  it('SaveSetting:Office calls settings.saveAsync', () => {
-    const setMockFn = jest.fn();
-    const saveAsyncMockFn = jest.fn();
-    const settingName = 'randomSetting';
-    const settingValue = 'settingValue';
-    (window as any).Office = {
-      context: {
-        document: { settings: { set: setMockFn, saveAsync: saveAsyncMockFn } },
-      },
-    };
-
-    AddinUtils.SaveSetting(settingName, settingValue);
-    expect(setMockFn).toHaveBeenCalledTimes(1);
-    expect(setMockFn).toHaveBeenCalledWith(settingName, settingValue);
-    expect(saveAsyncMockFn).toHaveBeenCalledTimes(1);
-  });
-
-  it('GetText:Office calls getSelectedDataAsync with correct params', () => {
-    const mockFn = jest.fn();
-    const successFn = jest.fn();
-    (window as any).Office = {
-      CoercionType: { Text: 'Text' },
-      context: { document: { getSelectedDataAsync: mockFn } },
-    };
-
-    AddinUtils.GetText(successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(successFn).toHaveBeenCalledTimes(0);
-  });
-
-  it('GetText:google calls getSelectedText with correct params', () => {
-    const mockFn = jest.fn();
-    const successFn = jest.fn();
-    (window as any).google = {
-      script: {
-        run: {
-          getSelectedText: mockFn,
-          withSuccessHandler: () => window.google.script.run,
-          withFailureHandler: () => window.google.script.run,
-        },
-      },
-    };
-
-    AddinUtils.GetText(successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(successFn).toHaveBeenCalledTimes(0);
-  });
-
-  it('InsertText:Office calls setSelectedDataAsync with correct params', () => {
-    const mockFn = jest.fn();
-    const successFn = jest.fn();
-    const textContent = 'sample text';
-    (window as any).location = { hostname: 'https://testing:1234' } as Location;
-    (window as any).Office = {
-      CoercionType: { Text: 'Text' },
-      context: { document: { setSelectedDataAsync: mockFn } },
-    };
-
-    AddinUtils.InsertText(textContent, 'Text', successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(mockFn.mock.lastCall[0]).toBe(textContent);
-    //expect(mockFn.mock.lastCall[0]).toBe(textContent);
-    expect(successFn).toHaveBeenCalledTimes(0);
-    // simulate Office callback invocation
-    mockFn.mock.lastCall[2]();
-    expect(successFn).toHaveBeenCalledTimes(1);
-  });
-
-  it('InsertText:google calls insertText with correct params', () => {
-    const mockFn = jest.fn();
-    const successFn = jest.fn();
-    const textContent = 'sample text';
-    (window as any).location = { hostname: 'https://testing:1234' } as Location;
-    (window as any).google = {
-      script: {
-        run: {
-          insertPlainText: mockFn,
-        },
-      },
-    };
-
-    AddinUtils.InsertText(textContent, 'Text', successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(mockFn.mock.lastCall[0]).toBe(textContent);
-  });
-
-  it('InsertImage:Office calls setSelectedDataAsync with correct params', () => {
-    const mockFn = jest.fn();
-    const successFn = jest.fn();
-    const imageText = 'imageText';
-    (window as any).Office = {
-      CoercionType: { Image: 'Image' },
-      context: { document: { setSelectedDataAsync: mockFn } },
-    };
-
-    AddinUtils.InsertImage(imageText, successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(mockFn.mock.lastCall[0]).toBe(imageText);
-    expect(mockFn.mock.lastCall[1]).toEqual({
-      coercionType: Office.CoercionType.Image,
+    const mockWithSuccessHandler = jest.fn().mockImplementation((cb: (res: any) => void) => {
+      cb('gsuite-success');
+      return {
+        withFailureHandler: jest.fn().mockReturnThis(),
+        insertPlainText: jest.fn(),
+      };
     });
-    expect(successFn).toHaveBeenCalledTimes(0);
-    // manually call the callback of InsertImage - which should call our callback
-    mockFn.mock.lastCall[2]();
-    expect(successFn).toHaveBeenCalledTimes(1);
-  });
 
-  it('InsertImage:google calls insertImageFromBase64String with correct params', () => {
-    const mockFn = jest.fn();
-    // there is no real way to test the successFn callback in this case
-    // since google handles these on their end.
-    // https://developers.google.com/apps-script/guides/html/reference/run
-    const successFn = jest.fn();
-    const imageText = 'imageText';
-    window.google = {
+    global.window.google = {
       script: {
         run: {
-          withSuccessHandler: () => window.google.script.run,
-          withFailureHandler: () => window.google.script.run,
-          insertImageFromBase64String: mockFn,
-          insertPlainText: () => undefined,
-          getSelectedText: () => undefined,
+          withSuccessHandler: mockWithSuccessHandler,
+          withFailureHandler: jest.fn().mockReturnThis(),
+          insertPlainText: jest.fn(),
+        },
+      },
+    } as any;
+
+    const result = await AddinUtils.InsertText('gsuite-success');
+    expect(result).toBe('gsuite-success');
+  });
+
+  it('should insert text via Office API when in Office', async () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const setSelectedDataAsync = jest.fn((_t: any, _opts: any, cb: any) => {
+      cb({ status: 'succeeded' });
+    });
+
+    global.window.Office = {
+      CoercionType: {
+        Text: 'Text',
+        Html: 'Html',
+      },
+      AsyncResultStatus: {
+        Failed: 'failed',
+        Succeeded: 'succeeded',
+      },
+      context: {
+        document: {
+          setSelectedDataAsync,
+        },
+      },
+    } as any;
+    const sampleText = 'Sample text to insert';
+    const result = await AddinUtils.InsertText(sampleText);
+    expect(result).toEqual({ status: 'succeeded' });
+    expect(setSelectedDataAsync).toHaveBeenCalledWith(
+      sampleText,
+      { coercionType: 'Text' },
+      expect.any(Function)
+    );
+  });
+
+  it('should reject when Office API returns failure', async () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+    const sampleText = 'Sample text to insert';
+    const errorMessage = 'Office insertion failed';
+
+    global.window.Office = {
+      CoercionType: {
+        Text: 'Text',
+        Html: 'Html',
+      },
+      AsyncResultStatus: {
+        Failed: 'failed',
+        Succeeded: 'succeeded',
+      },
+      context: {
+        document: {
+          setSelectedDataAsync: (_t: any, _opts: any, cb: any) => {
+            cb({ status: 'failed', error: { message: errorMessage } });
+          },
+        },
+      },
+    } as any;
+
+    await expect(AddinUtils.InsertText(sampleText)).rejects.toEqual(errorMessage);
+  });
+});
+
+describe('AddinUtils.InsertImage', () => {
+  it('inserts image in Office', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+    const mockSet = jest.fn((_text, _opts, cb) => cb({ status: 'succeeded' }));
+
+    window.Office = {
+      CoercionType: { Image: 'Image' },
+      AsyncResultStatus: { Failed: 'failed', Succeeded: 'succeeded' },
+      context: { document: { setSelectedDataAsync: mockSet } },
+    };
+
+    const result = await AddinUtils.InsertImage('imgdata');
+    expect(mockSet).toHaveBeenCalled();
+    expect(result.status).toBe('succeeded');
+  });
+
+  it('inserts image in GSuite', async () => {
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
+
+    const successHandler = jest.fn();
+    const failureHandler = jest.fn();
+    const insertMock = jest.fn();
+
+    const chainable = {
+      withSuccessHandler: (cb: any) => {
+        successHandler.mockImplementation(cb);
+        return chainable;
+      },
+      withFailureHandler: (cb: any) => {
+        failureHandler.mockImplementation(cb);
+        return chainable;
+      },
+      insertImageFromBase64String: insertMock,
+    };
+
+    (window.google as any) = { script: { run: chainable } };
+
+    const promise = AddinUtils.InsertImage('imgdata');
+    successHandler('ok');
+    await expect(promise).resolves.toBe('ok');
+    expect(insertMock).toHaveBeenCalled();
+  });
+});
+
+describe('AddinUtils.GetText', () => {
+  it('gets text from Office', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const mockGet = jest.fn((_t, cb) =>
+      cb({ status: 'succeeded', value: 'the-text' })
+    );
+
+    window.Office = {
+      CoercionType: { Text: 'Text' },
+      AsyncResultStatus: { Failed: 'failed', Succeeded: 'succeeded' },
+      context: { document: { getSelectedDataAsync: mockGet } },
+    };
+
+    const text = await AddinUtils.GetText();
+    expect(text).toBe('the-text');
+  });
+
+  it('fails getting text from Office', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const errorMsg = 'failed!';
+    window.Office = {
+      CoercionType: { Text: 'Text' },
+      AsyncResultStatus: { Failed: 'failed' },
+      context: {
+        document: {
+          getSelectedDataAsync: (_t: any, cb: any) =>
+            cb({ status: 'failed', error: { message: errorMsg } }),
         },
       },
     };
 
-    AddinUtils.InsertImage(imageText, successFn);
-    expect(mockFn).toHaveBeenCalledTimes(1);
-    expect(mockFn.mock.lastCall[0]).toBe(imageText);
+    await expect(AddinUtils.GetText()).rejects.toBe(errorMsg);
+  });
+
+  it('gets text from GSuite', async () => {
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
+
+    let success: any;
+    const runner = {
+      withSuccessHandler: (cb: any) => {
+        success = cb;
+        return runner;
+      },
+      withFailureHandler: () => runner,
+      getSelectedText: jest.fn(),
+    };
+
+    (window.google as any) = { script: { run: runner } };
+
+    const p = AddinUtils.GetText();
+    success('gsuite-text');
+    await expect(p).resolves.toBe('gsuite-text');
+  });
+});
+
+describe('AddinUtils.Settings', () => {
+  it('saves and gets Office setting', () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const setMock = jest.fn();
+    const saveAsyncMock = jest.fn();
+    const getMock = jest.fn().mockReturnValue('stored-value');
+
+    window.Office = {
+      context: {
+        document: {
+          settings: {
+            set: setMock,
+            saveAsync: saveAsyncMock,
+            get: getMock,
+          },
+        },
+      },
+    };
+
+    AddinUtils.SaveSetting('theme', 'dark');
+    expect(setMock).toHaveBeenCalledWith('theme', 'dark');
+    expect(saveAsyncMock).toHaveBeenCalled();
+
+    const val = AddinUtils.GetSetting('theme');
+    expect(val).toBe('stored-value');
+  });
+
+  it('saves and gets settings in localhost', () => {
+    (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(true);
+    AddinUtils.SaveSetting('lang', 'en');
+    const val = AddinUtils.GetSetting('lang');
+    expect(val).toBe('en');
   });
 });

@@ -1,10 +1,10 @@
 export {};
 
-type AppInsights = {
+export type AppInsights = {
   trackEvent: (event: { name: string }) => void;
 };
 
-type GoogleScriptRun = {
+export type GoogleScriptRun = {
   script: {
     run: {
       withSuccessHandler: (
