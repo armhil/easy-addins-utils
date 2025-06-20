@@ -32,7 +32,7 @@ export const AddinUtils = {
    */
   InsertText: function (
     text: string,
-    insertionType: 'Text' | 'Html' = 'Text',
+    insertionType: 'Text' | 'Html' = 'Text'
   ): Promise<any> {
     return new Promise((resolve, reject) => {
       if (EnvironmentUtils.IsLocalhost()) {
@@ -48,7 +48,9 @@ export const AddinUtils = {
           text,
           { coercionType: window.Office.CoercionType[insertionType] },
           (successParams: Office.AsyncResult<void>) => {
-            if (successParams.status === window.Office.AsyncResultStatus.Failed) {
+            if (
+              successParams.status === window.Office.AsyncResultStatus.Failed
+            ) {
               return reject(successParams.error.message);
             }
             return resolve(successParams);
@@ -63,16 +65,16 @@ export const AddinUtils = {
    * @param {string} image Base64 image.
    * @param {function} callback Callback function
    */
-  InsertImage: function (
-    image: string
-  ): Promise<any> {
+  InsertImage: function (image: string): Promise<any> {
     return new Promise((resolve, reject) => {
       if (EnvironmentUtils.IsOffice()) {
         window.Office.context.document.setSelectedDataAsync(
           image,
           { coercionType: window.Office.CoercionType.Image },
           (successParams: Office.AsyncResult<void>) => {
-            if (successParams.status === window.Office.AsyncResultStatus.Failed) {
+            if (
+              successParams.status === window.Office.AsyncResultStatus.Failed
+            ) {
               return reject(successParams.error.message);
             }
             return resolve(successParams);
@@ -107,7 +109,6 @@ export const AddinUtils = {
       });
     } else if (EnvironmentUtils.IsGsuite()) {
       return new Promise((resolve, reject) => {
-
         window.google.script.run
           .withSuccessHandler((result: any) => resolve(result))
           .withFailureHandler((err: any) => reject(err))

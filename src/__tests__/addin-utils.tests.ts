@@ -1,5 +1,5 @@
 import { AddinUtils } from './../addin-utils';
-import { EnvironmentUtils } from './../environment-utils'
+import { EnvironmentUtils } from './../environment-utils';
 import type { GoogleScriptRun } from './../types';
 // Mock EnvironmentUtils
 jest.mock('./../environment-utils', () => ({
@@ -28,7 +28,9 @@ beforeEach(() => {
 describe('AddinUtils.Initialize', () => {
   it('resolves immediately on localhost', async () => {
     (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(true);
-    await expect(AddinUtils.Initialize()).resolves.toContain('No action in localhost');
+    await expect(AddinUtils.Initialize()).resolves.toContain(
+      'No action in localhost'
+    );
   });
 
   it('resolves on Office ready', async () => {
@@ -56,13 +58,15 @@ describe('AddinUtils.InsertText', () => {
     (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(false);
     (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
 
-    const mockWithSuccessHandler = jest.fn().mockImplementation((cb: (res: any) => void) => {
-      cb('gsuite-success');
-      return {
-        withFailureHandler: jest.fn().mockReturnThis(),
-        insertPlainText: jest.fn(),
-      };
-    });
+    const mockWithSuccessHandler = jest
+      .fn()
+      .mockImplementation((cb: (res: any) => void) => {
+        cb('gsuite-success');
+        return {
+          withFailureHandler: jest.fn().mockReturnThis(),
+          insertPlainText: jest.fn(),
+        };
+      });
 
     global.window.google = {
       script: {
@@ -137,7 +141,9 @@ describe('AddinUtils.InsertText', () => {
       },
     } as any;
 
-    await expect(AddinUtils.InsertText(sampleText)).rejects.toEqual(errorMessage);
+    await expect(AddinUtils.InsertText(sampleText)).rejects.toEqual(
+      errorMessage
+    );
   });
 });
 
@@ -151,9 +157,11 @@ describe('AddinUtils.InsertImage', () => {
   it('should insert image using Office API when in Office', async () => {
     (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
 
-    const mockSetSelectedDataAsync = jest.fn((_img: any, _options: any, callback: any) => {
-      callback({ status: 'succeeded' });
-    });
+    const mockSetSelectedDataAsync = jest.fn(
+      (_img: any, _options: any, callback: any) => {
+        callback({ status: 'succeeded' });
+      }
+    );
 
     global.window.Office = {
       CoercionType: {
@@ -201,20 +209,24 @@ describe('AddinUtils.InsertImage', () => {
       },
     } as any;
 
-    await expect(AddinUtils.InsertImage(sampleImage)).rejects.toEqual(errorMessage);
+    await expect(AddinUtils.InsertImage(sampleImage)).rejects.toEqual(
+      errorMessage
+    );
   });
 
   it('should insert image using GSuite API when in G-Suite', async () => {
     (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(false);
     (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
 
-    const mockSuccessHandler = jest.fn().mockImplementation((cb: (res: any) => void) => {
-      cb('gsuite-image-success');
-      return {
-        withFailureHandler: jest.fn().mockReturnThis(),
-        insertImageFromBase64String: jest.fn(),
-      };
-    });
+    const mockSuccessHandler = jest
+      .fn()
+      .mockImplementation((cb: (res: any) => void) => {
+        cb('gsuite-image-success');
+        return {
+          withFailureHandler: jest.fn().mockReturnThis(),
+          insertImageFromBase64String: jest.fn(),
+        };
+      });
 
     global.window.google = {
       script: {
@@ -234,7 +246,7 @@ describe('AddinUtils.InsertImage', () => {
     (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(false);
     (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
 
-    const mockFailureHandler = jest.fn().mockImplementation((_cb: any) => {
+    const mockFailureHandler = jest.fn().mockImplementation(() => {
       return {
         withSuccessHandler: jest.fn().mockReturnThis(),
         insertImageFromBase64String: jest.fn().mockImplementation(() => {
@@ -254,9 +266,7 @@ describe('AddinUtils.InsertImage', () => {
     } as any;
 
     // Note: GSuite failure handler doesn't throw in your actual code – this is illustrative
-    await expect(
-      AddinUtils.InsertImage(sampleImage)
-    ).rejects.toBeDefined();
+    await expect(AddinUtils.InsertImage(sampleImage)).rejects.toBeDefined();
   });
 });
 
