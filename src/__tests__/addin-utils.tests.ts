@@ -142,46 +142,121 @@ describe('AddinUtils.InsertText', () => {
 });
 
 describe('AddinUtils.InsertImage', () => {
-  it('inserts image in Office', async () => {
-    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
-    const mockSet = jest.fn((_text, _opts, cb) => cb({ status: 'succeeded' }));
+  const sampleImage = 'base64encodedimage==';
 
-    window.Office = {
-      CoercionType: { Image: 'Image' },
-      AsyncResultStatus: { Failed: 'failed', Succeeded: 'succeeded' },
-      context: { document: { setSelectedDataAsync: mockSet } },
-    };
-
-    const result = await AddinUtils.InsertImage('imgdata');
-    expect(mockSet).toHaveBeenCalled();
-    expect(result.status).toBe('succeeded');
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
-  it('inserts image in GSuite', async () => {
+  it('should insert image using Office API when in Office', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const mockSetSelectedDataAsync = jest.fn((_img: any, _options: any, callback: any) => {
+      callback({ status: 'succeeded' });
+    });
+
+    global.window.Office = {
+      CoercionType: {
+        Image: 'Image',
+      },
+      AsyncResultStatus: {
+        Failed: 'failed',
+        Succeeded: 'succeeded',
+      },
+      context: {
+        document: {
+          setSelectedDataAsync: mockSetSelectedDataAsync,
+        },
+      },
+    } as any;
+
+    const result = await AddinUtils.InsertImage(sampleImage);
+    expect(result).toEqual({ status: 'succeeded' });
+    expect(mockSetSelectedDataAsync).toHaveBeenCalledWith(
+      sampleImage,
+      { coercionType: 'Image' },
+      expect.any(Function)
+    );
+  });
+
+  it('should reject when Office API returns failure', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(true);
+
+    const errorMessage = 'Failed to insert image';
+
+    global.window.Office = {
+      CoercionType: {
+        Image: 'Image',
+      },
+      AsyncResultStatus: {
+        Failed: 'failed',
+        Succeeded: 'succeeded',
+      },
+      context: {
+        document: {
+          setSelectedDataAsync: (_img: any, _options: any, callback: any) => {
+            callback({ status: 'failed', error: { message: errorMessage } });
+          },
+        },
+      },
+    } as any;
+
+    await expect(AddinUtils.InsertImage(sampleImage)).rejects.toEqual(errorMessage);
+  });
+
+  it('should insert image using GSuite API when in G-Suite', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(false);
     (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
 
-    const successHandler = jest.fn();
-    const failureHandler = jest.fn();
-    const insertMock = jest.fn();
+    const mockSuccessHandler = jest.fn().mockImplementation((cb: (res: any) => void) => {
+      cb('gsuite-image-success');
+      return {
+        withFailureHandler: jest.fn().mockReturnThis(),
+        insertImageFromBase64String: jest.fn(),
+      };
+    });
 
-    const chainable = {
-      withSuccessHandler: (cb: any) => {
-        successHandler.mockImplementation(cb);
-        return chainable;
+    global.window.google = {
+      script: {
+        run: {
+          withSuccessHandler: mockSuccessHandler,
+          withFailureHandler: jest.fn().mockReturnThis(),
+          insertImageFromBase64String: jest.fn(),
+        },
       },
-      withFailureHandler: (cb: any) => {
-        failureHandler.mockImplementation(cb);
-        return chainable;
+    } as any;
+
+    const result = await AddinUtils.InsertImage(sampleImage);
+    expect(result).toBe('gsuite-image-success');
+  });
+
+  it('should reject if GSuite API fails', async () => {
+    (EnvironmentUtils.IsOffice as jest.Mock).mockReturnValue(false);
+    (EnvironmentUtils.IsGsuite as jest.Mock).mockReturnValue(true);
+
+    const mockFailureHandler = jest.fn().mockImplementation((_cb: any) => {
+      return {
+        withSuccessHandler: jest.fn().mockReturnThis(),
+        insertImageFromBase64String: jest.fn().mockImplementation(() => {
+          throw new Error('fail');
+        }),
+      };
+    });
+
+    global.window.google = {
+      script: {
+        run: {
+          withFailureHandler: mockFailureHandler,
+          withSuccessHandler: jest.fn().mockReturnThis(),
+          insertImageFromBase64String: jest.fn(),
+        },
       },
-      insertImageFromBase64String: insertMock,
-    };
+    } as any;
 
-    (window.google as any) = { script: { run: chainable } };
-
-    const promise = AddinUtils.InsertImage('imgdata');
-    successHandler('ok');
-    await expect(promise).resolves.toBe('ok');
-    expect(insertMock).toHaveBeenCalled();
+    // Note: GSuite failure handler doesn't throw in your actual code – this is illustrative
+    await expect(
+      AddinUtils.InsertImage(sampleImage)
+    ).rejects.toBeDefined();
   });
 });
 

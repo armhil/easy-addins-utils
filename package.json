@@ -1,6 +1,6 @@
 {
   "name": "easy-addins-utils",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Utility functions for easy addins collection",
   "main": "dist/index.js",
   "types": "dist/types",
