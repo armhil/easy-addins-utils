@@ -8,20 +8,19 @@ export const AddinUtils = {
    */
   Initialize: function (): Promise<any> {
     return new Promise((resolve, reject) => {
-      // We're in localhost
-      if (EnvironmentUtils.IsLocalhost()) {
+      if (EnvironmentUtils.IsGsuite()) {
+        return reject('Not implemented yet');
+      }
+      else if (EnvironmentUtils.IsLocalhost()) {
         console.log('AddinUtils.Initialize -> We are in localhost');
         return resolve('AddinUtilsInitialize - No action in localhost');
       }
       // Microsoft Office
-      else if (EnvironmentUtils.IsOffice()) {
+      // We need to keep this last, and ideally not rely on the IsOffice
+      else  {
         window.Office.onReady((info: any) => {
           return resolve(info);
         });
-      }
-      // G-Suite
-      else {
-        return reject('Not implemented yet');
       }
     });
   },

@@ -41,10 +41,6 @@ describe('AddinUtils.Initialize', () => {
     const result = await AddinUtils.Initialize();
     expect(result).toBe('office-ready');
   });
-
-  it('rejects on unsupported platform', async () => {
-    await expect(AddinUtils.Initialize()).rejects.toBe('Not implemented yet');
-  });
 });
 
 describe('AddinUtils.InsertText', () => {
