@@ -4,21 +4,21 @@ export const AddinUtils = {
   /**
    * Initializes the addin.
    * Required for Office addins, tbd for G-Suite.
-   * @param {function} successCallback - Success callback
    */
   Initialize: function (): Promise<any> {
     return new Promise((resolve, reject) => {
       if (EnvironmentUtils.IsGsuite()) {
-        return reject('Not implemented yet');
+        console.log('AddinUtils.Initialize -> We are in Google Docs');
+        resolve(true);
       } else if (EnvironmentUtils.IsLocalhost()) {
         console.log('AddinUtils.Initialize -> We are in localhost');
-        return resolve('AddinUtilsInitialize - No action in localhost');
+        resolve(true);
       }
       // Microsoft Office
       // We need to keep this last, and ideally not rely on the IsOffice
       else {
         window.Office.onReady((info: any) => {
-          return resolve(info);
+          resolve(info);
         });
       }
     });

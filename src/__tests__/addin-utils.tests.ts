@@ -28,9 +28,7 @@ beforeEach(() => {
 describe('AddinUtils.Initialize', () => {
   it('resolves immediately on localhost', async () => {
     (EnvironmentUtils.IsLocalhost as jest.Mock).mockReturnValue(true);
-    await expect(AddinUtils.Initialize()).resolves.toContain(
-      'No action in localhost'
-    );
+    await expect(AddinUtils.Initialize()).resolves.toBe(true);
   });
 
   it('resolves on Office ready', async () => {
