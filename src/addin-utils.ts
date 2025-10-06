@@ -6,7 +6,7 @@ export const AddinUtils = {
    * Required for Office addins, tbd for G-Suite.
    */
   Initialize: function (): Promise<any> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (EnvironmentUtils.IsGsuite()) {
         console.log('AddinUtils.Initialize -> We are in Google Docs');
         resolve(true);
